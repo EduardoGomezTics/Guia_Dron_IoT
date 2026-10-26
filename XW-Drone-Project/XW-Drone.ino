@@ -44,22 +44,25 @@ void setup() {
 }
 
 void loop() {
-	readIMU();
-	step();
-	readRC();
+    readIMU();
+    step();
+    readRC();
 #if WEB_RC_ENABLED
-	readWebRC();  // 读取Web遥控器输入
-	processConsoleCommandQueue(); // 将网页命令放到主循环执行，避免阻塞HTTP回调
+    readWebRC();
+    processConsoleCommandQueue();
 #endif
-	estimate();
-	updateBatteryVoltage();
-	control();
-	sendMotors();
-	handleInput();
 #if WIFI_ENABLED
-	processMavlink();
+    maintainWiFi();   
 #endif
-	logData();
-	syncParameters();
-	updateLED();
+    estimate();
+    updateBatteryVoltage();
+    control();
+    sendMotors();
+    handleInput();
+#if WIFI_ENABLED
+    processMavlink();
+#endif
+    logData();
+    syncParameters();
+    updateLED();
 }

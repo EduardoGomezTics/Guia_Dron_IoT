@@ -1,628 +1,157 @@
-# Ensamble del Dron
+<h1 align="center">XW-Drone: Sistema de Control Web para Cuadricóptero ESP32</h1>
 
-Guía para el armado, conexión, configuración y carga de firmware de un dron que viene **preensamblado de fábrica**.
+<p align="center">
+  <img src="https://img.shields.io/badge/ESP32-DevKit-red?style=for-the-badge&logo=espressif" alt="ESP32"/>
+  <img src="https://img.shields.io/badge/C%2B%2B-Arduino-blue?style=for-the-badge&logo=c%2B%2B" alt="C++"/>
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" alt="HTML5"/>
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white" alt="CSS3"/>
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="JavaScript"/>
+</p>
 
-> **Nota:** Este procedimiento está pensado para un modelo en el que la estructura, placa electrónica, cableado y demás componentes principales ya vienen instalados. El montaje requerido se limita principalmente a los motores y las hélices, seguido de la programación y las pruebas de funcionamiento.
+<div align="center">
+  <img src="assets/dron.jpg" alt="Dron pre-ensamblado" width="600"/>
+  <p><i>Figura 1. Vista general del dron pre-ensamblado utilizado para el desarrollo del proyecto.</i></p>
+</div>
 
----
+Este proyecto consiste en el desarrollo de un firmware y una interfaz web para el control de un dron cuadricóptero. El hardware está basado en un **kit de dron pre-ensamblado** (tipo DIY de 85mm), sobre el cual se implementó toda la lógica de control, los algoritmos de vuelo y la interfaz de usuario. El sistema permite pilotar el dron en tiempo real a través de una página web alojada en el propio microcontrolador ESP32, utilizando una conexión WiFi local. El diseño está optimizado para pruebas de vuelo de precisión y competencias de obstáculos.
 
-## 1. Componentes necesarios
-
-### Componentes principales
-
-* Chasis del dron preensamblado
-* Placa controladora de vuelo (ESP-32)
-* 4 × motores
-* 4 × hélices
-* Batería LiPo
-* Cable/conector de alimentación
-* Cable USB para carga de bateria lipo
-
-### Herramientas
-
-* Destornilladores
-* Pinzas
-* Tornillos y accesorios incluidos con el dron
-* Computadora
-* Cable USB
-* Software/IDE (Arduino IDE)
-
-### Opcional
-
-* Multímetro
-* Fuente de alimentación regulable
-* Cargador balanceador para LiPo
-* Probador de baterías
+## Tabla de Contenidos
+1. [Características Principales](#características-principales)
+2. [Hardware y Componentes](#hardware-y-componentes)
+3. [Detalles de Ensamble y Advertencias](#detalles-de-ensamble-y-advertencias)
+4. [Arquitectura del Software](#arquitectura-del-software)
+5. [Guía de la Interfaz de Vuelo](#guía-de-la-interfaz-de-vuelo)
+6. [Instalación y Configuración](#instalación-y-configuración)
+7. [Consejos para la Competencia](#consejos-para-la-competencia)
+8. [Solución de Problemas Frecuentes](#solución-de-problemas-frecuentes)
+9. [Créditos y Autoría](#créditos-y-autoría)
 
 ---
 
-# 2. Inspección inicial
+## Características Principales
 
-Antes de instalar cualquier componente, realizar una inspección visual.
-
-### Revisar:
-
-* [ ] Chasis sin grietas o daños.
-* [ ] Placa controladora correctamente instalada.
-* [ ] Cables correctamente conectados.
-* [ ] Conectores sin pines doblados.
-* [ ] Soldaduras aparentemente correctas.
-* [ ] Conector de batería en buen estado.
-* [ ] No existen cables pelados o en corto.
-* [ ] Los motores corresponden al modelo del dron.
-* [ ] Las hélices no presentan daños.
-
->  **No conectar la batería todavía.**
+- **Interfaz Web Táctil Avanzada:** Control mediante doble joystick virtual, diseñado ergonómicamente para pantallas de teléfonos y tablets en orientación horizontal.
+- **Algoritmos de Vuelo (Frontend):** Implementación de suavizado de señal (Ramping), curvas exponenciales (Expo) y zonas muertas (Deadzone) directamente en JavaScript para un vuelo fluido.
+- **Modos de Vuelo:** Selector de "Modo Precisión" (reducción de sensibilidad al 60% para maniobras finas) y control de "Ajuste Fino" (Trim) para compensar derivas.
+- **Sistemas de Seguridad:** Botón de "Parada de Emergencia" (requiere mantener presionado 0.25s), botón de "Modo Estático" (nivela ejes y congela el gas), y Auto-Desarmado automático si el navegador pierde el foco.
+- **Soporte para Gamepad:** Integración de la API de HTML5 para conectar controles físicos (Xbox, PlayStation) vía Bluetooth y aumentar la precisión de pilotaje.
+- **Telemetría Básica:** Monitoreo del voltaje de la batería con alertas visuales (borde de pantalla parpadeante) en casos críticos.
 
 ---
 
-# 3. Instalación de los motores
+## Hardware y Componentes
 
-El dron utiliza cuatro motores, uno en cada brazo del chasis.
+El proyecto utiliza la plataforma estándar de kits pre-ensamblados para micro-drones, compuesto por los siguientes elementos:
 
-La posición normalmente se identifica como:
+| Componente | Especificación / Modelo |
+| :--- | :--- |
+| **Microcontrolador** | ESP32 (DevKit) |
+| **Motores** | 4x Coreless 8520 (2 CW, 2 CCW) |
+| **Controladores de Motor** | Placa de distribución (PCB) con MOSFETs AO3416 |
+| **Sensor IMU** | MPU6050 (Acelerómetro y Giroscopio) |
+| **Batería** | LiPo 1S (3.7V) de alta tasa de descarga (70C a 150C) |
+| **Hélices** | 55mm (Marcas A3 y B3) |
+| **Estructura** | Marco de 85mm |
 
-```text
-             PARTE FRONTAL
-                  ↑
-
-             M1          M2
-              ↻          ↺
-
-             M3          M4
-              ↺          ↻
-
-                  ↓
-             PARTE TRASERA
-```
-
-> **Importante:** La numeración y dirección de giro pueden variar dependiendo del firmware y de la controladora. Antes de fijar definitivamente los motores, comprobar la documentación o configuración utilizada por el firmware.
-
-## Procedimiento
-
-1. Identificar los cuatro brazos.
-2. Colocar un motor en cada extremo.
-3. Alinear los orificios de montaje.
-4. Colocar los tornillos correspondientes.
-5. Apretar los tornillos firmemente, pero sin ejercer fuerza excesiva.
-6. Comprobar que cada motor pueda girar libremente.
-7. Revisar que ningún cable quede atrapado entre el motor y el chasis.
+<div align="center">
+  <img src="assets/components.jpg" alt="Componentes del dron" width="500"/>
+  <p><i>Figura 2. Desglose de los componentes principales del dron.</i></p>
+</div>
 
 ---
 
-# 4. Conexión de los motores
+## Detalles de Ensamble y Advertencias
 
-Conectar cada motor a la salida correspondiente de la controladora.
+Aunque el hardware viene pre-ensamblado, es necesario verificar y configurar correctamente ciertos componentes antes del primer vuelo.
 
-Ejemplo:
+> [!WARNING]
+> **Selección de la Batería: la tasa de descarga (C) es crítica**
+>
+> Batería utilizada durante el desarrollo: **LiPo 1S, 3.7 V, 750 mAh, 70C a 150C**.
+>
+> Las pruebas iniciales con baterías de menor tasa de descarga (**15C o 25C**) tuvieron un funcionamiento deficiente por la **Caída de Tensión (*Voltage Sag*)**. Los motores 8520 demandan **más de 10 A en picos**; si la batería no puede suministrar esa corriente, su voltaje se desploma y ocurre lo siguiente:
+>
+> - Los motores pierden fuerza.
+> - Los motores se detienen en pleno vuelo.
+> - El dron no logra despegar.
+>
+> **Requisito:** utilizar una batería de **70C o superior** para garantizar un voltaje estable a máxima potencia.
 
-```text
-Motor 1 ───────► M1
-Motor 2 ───────► M2
-Motor 3 ───────► M3
-Motor 4 ───────► M4
-```
+> [!IMPORTANT]
+> **Orientación de Motores y Hélices**
+>
+> El PCB cuenta con indicaciones serigrafiadas (flechas de giro) que dictan la orientación exacta de cada motor.
+>
+> **No confíes únicamente en el color de los cables** (rojo/azul o negro/blanco): varía según el fabricante. Verifica siempre el sentido de giro contra la flecha del PCB.
 
-Si los motores utilizan conectores, verificar que estén completamente insertados.
-
-Si utilizan soldadura:
-
-* Comprobar polaridad cuando corresponda.
-* Revisar que no existan puentes de soldadura.
-* Evitar cables excesivamente largos.
-* Asegurar los cables al chasis.
-
----
-
-# 5. Instalación de las hélices
-
-Las hélices deben instalarse respetando la configuración de giro del dron.
-
-Un cuadricóptero normalmente utiliza:
-
-* 2 hélices que giran en sentido horario (CW)
-* 2 hélices que giran en sentido antihorario (CCW)
-
-Ejemplo:
-
-```text
-             PARTE FRONTAL
-                  ↑
-
-             CW          CCW
-              ↻           ↺
-
-             CCW         CW
-              ↺           ↻
-```
-
-## Procedimiento
-
-1. Identificar las hélices CW y CCW.
-2. Identificar qué motor debe girar en cada dirección.
-3. Colocar cada hélice sobre su motor correspondiente.
-4. Verificar que la hélice esté orientada correctamente.
-5. Asegurar la hélice según el sistema de fijación utilizado.
-
-> **No instalar las hélices durante las primeras pruebas de los motores.**
+**Procedimiento de verificación:**
+1. **Prueba de Motores (Sin hélices):** Activa un motor a baja potencia. Verifica que el giro físico coincida con la flecha del PCB. Si gira al revés, apaga el dron e invierte la polaridad de los cables en el conector JST. Repite con los 4 motores.
+2. **Prueba de Empuje (Con hélices):** Coloca las hélices (A3 o B3 según corresponda). Enciende a baja potencia y coloca la mano debajo de cada hélice. Debes sentir el aire empujando **hacia abajo**. Si el aire va hacia arriba, la hélice está invertida o en el motor equivocado.
 
 ---
 
-# 6. Verificación de la alimentación
+## Arquitectura del Software
 
-Antes de conectar la batería:
+El proyecto está desarrollado en el entorno de Arduino IDE (C++) para el hardware, y HTML/CSS/JavaScript para el cliente.
 
-1. Inspeccionar el conector.
-2. Verificar que no existan cortocircuitos visibles.
-3. Comprobar la tensión de la batería con un multímetro.
-4. Confirmar que el voltaje sea compatible con el dron.
+- **Firmware (ESP32):** El código principal (`XW-Drone.ino`) gestiona el ciclo de vuelo, la lectura del IMU, los algoritmos PID y la generación de señales PWM. El servidor web corre de forma asíncrona.
+- **Interfaz (Cliente):** Todo el código HTML, CSS y JS está embebido en el archivo `web_rc_html.h` como una cadena de texto (PROGMEM). La comunicación se realiza mediante peticiones HTTP POST asíncronas (`fetch`) enviadas a 20Hz para no saturar el procesador.
 
-### LiPo de una celda
-
-Una batería LiPo 1S normalmente trabaja aproximadamente entre:
-
-```text
-Carga completa       ≈ 4.2 V
-Voltaje nominal      ≈ 3.7 V
-Descarga profunda    ≈ 3.0 V
-```
-
-> No asumir que una batería de mayor voltaje es compatible solamente porque el dron enciende. La tensión máxima permitida debe coincidir con la electrónica y los motores.
+<div align="center">
+  <img src="assets/interface.jpg" alt="Interfaz de control" width="600"/>
+  <p><i>Figura 3. Interfaz web de control en funcionamiento.</i></p>
+</div>
 
 ---
 
-# 7. Preparación para programar
+## Guía de la Interfaz de Vuelo
 
-Conectar la controladora al ordenador mediante USB cuando el diseño de la placa lo permita.
-
-Verificar que el dispositivo sea reconocido.
-
-Ejemplo:
-
-```text
-PC
- │
- │ USB
- ▼
-Controladora
- │
- ├── Motor 1
- ├── Motor 2
- ├── Motor 3
- └── Motor 4
-```
-
-Instalar los controladores necesarios para el puerto USB/serial si el sistema operativo no reconoce automáticamente la placa.
+- **Joystick Izquierdo:** Controla la Aceleración (eje Y) y la Guiñada/Rotación (eje X).
+- **Joystick Derecho:** Controla el Cabeceo (eje Y) y el Alabeo (eje X).
+- **Menú de Opciones (Icono superior derecho):**
+  - *Modo Normal/Precisión:* Alterna la sensibilidad de los ejes de vuelo.
+  - *Modo Minimalista:* Oculta la telemetría y botones secundarios para maximizar el área de vuelo visual.
+  - *Tamaño de Joysticks:* Ajusta el diámetro de los controles.
+  - *Ajuste Fino (Trim):* Compensa pequeñas derivas del dron.
+- **Botones de Acción Rápida (Zona Central):**
+  - *Nivelar:* Centra los ejes de vuelo instantáneamente.
+  - *Gas (Candado):* Bloquea el acelerador en la posición actual (control de crucero).
+  - *Estático:* Detiene todos los movimientos y bloquea el gas en caso de emergencia.
+- **Botón de Parada:** Requiere mantener presionado para detener los motores inmediatamente.
 
 ---
 
-# 8. Configuración del entorno de desarrollo
+## Instalación y Configuración
 
-Instalar el IDE correspondiente al proyecto.
+1. **Clonar el repositorio** y abrir el archivo `XW-Drone.ino` en Arduino IDE.
+2. **Instalar dependencias:** Asegurarse de tener instalado el core de ESP32 en el gestor de placas y las librerías correspondientes (WebServer, WiFi, ESPmDNS, entre otras).
+3. **Configurar Red WiFi:** Por defecto, el dron crea una red llamada `XW_Drone_WiFi` con contraseña `12345678`. Para cambiarla, se debe modificar el código en `Soporte Wi-Fi.txt` o mediante el monitor serie.
+4. **Compilar y cargar** el código al ESP32.
+5. **Conexión:** Conectar el dispositivo móvil o PC a la red WiFi del dron y abrir un navegador web en la dirección: `http://192.168.4.1:8080`.
 
-Ejemplos:
-
-* Arduino IDE
-* PlatformIO
-* ESP-IDF
-* Otro entorno compatible con la controladora
-
-Configurar:
-
-```text
-Placa:       [modelo de la placa]
-Puerto:      [COM correspondiente]
-Baudrate:    [valor utilizado por el firmware]
-Programador: [si aplica]
-```
+> [!NOTE]
+> **Nota para estudiantes de nuevos semestres:** Si varios equipos comparten el mismo espacio de vuelo, asegúrense de cambiar el nombre de la red (SSID) en el código para evitar conflictos de conexión.
 
 ---
 
-# 9. Carga del firmware
+## Consejos para la Competencia
 
-Antes de cargar el código:
-
-* [ ] Seleccionar la placa correcta.
-* [ ] Seleccionar el puerto correcto.
-* [ ] Verificar las dependencias.
-* [ ] Comprobar las librerías utilizadas.
-* [ ] Revisar las constantes de configuración.
-* [ ] Verificar la asignación de motores.
-* [ ] Compilar el proyecto.
-
-Si la compilación es correcta, cargar el firmware:
-
-```text
-Compilar
-   ↓
-Verificar errores
-   ↓
-Conectar placa
-   ↓
-Seleccionar puerto
-   ↓
-Upload / Cargar
-   ↓
-Reiniciar placa
-```
+- **Calibración:** Realizar siempre la calibración del IMU (MPU6050) en una superficie plana y nivelada. No calibrar sobre superficies blandas.
+- **Precisión:** Utilizar el "Modo Precisión" antes de atravesar los aros y el Gamepad si se tiene acceso a uno para un control más fino.
+- **Mantenimiento:** Revisar frecuentemente que las hélices no tengan fisuras y que los conectores JST de los motores estén firmemente insertados.
 
 ---
 
-# 10. Configuración del firmware
+## Solución de Problemas Frecuentes
 
-La configuración debe corresponder físicamente al dron.
-
-Revisar principalmente:
-
-### Asignación de motores
-
-```text
-M1 → Motor delantero izquierdo
-M2 → Motor delantero derecho
-M3 → Motor trasero izquierdo
-M4 → Motor trasero derecho
-```
-
-### Dirección de giro
-
-```text
-M1 → CW
-M2 → CCW
-M3 → CCW
-M4 → CW
-```
-
-> La distribución anterior es únicamente un ejemplo. Utilizar la asignación definida por el firmware y la controladora específica.
-
-### Otros parámetros
-
-Dependiendo del proyecto:
-
-* Tipo de batería
-* Límites de aceleración
-* PWM
-* Frecuencia PWM
-* Velocidad mínima de motor
-* Velocidad máxima
-* PID
-* IMU
-* Giroscopio
-* Acelerómetro
-* Calibración
-* Protocolo de comunicación
-* Fail-safe
-* Control remoto
+- **El dron no despega o los motores se apagan en vuelo:** La batería no puede entregar la corriente necesaria (Voltage Sag). Reemplazar por una batería de mayor tasa de descarga (C).
+- **Los motores giran en sentido contrario:** Invertir la polaridad de los cables en el conector JST del motor correspondiente, verificando siempre contra la flecha del PCB.
+- **La interfaz web no se actualiza:** El navegador está guardando en caché la versión antigua. Borrar los datos de navegación o abrir la página en una ventana de incógnito.
+- **El dron no responde al gamepad:** Asegurarse de haber emparejado el control Bluetooth al dispositivo móvil *antes* de abrir la página web.
 
 ---
 
-# 11. Primera prueba sin hélices
+## Créditos y Autoría
 
-**Esta prueba debe realizarse sin hélices instaladas.**
-
-Conectar el dron y comprobar:
-
-```text
-Encendido
-   ↓
-Controladora inicia
-   ↓
-Firmware ejecuta
-   ↓
-Comunicación disponible
-   ↓
-Motores responden
-```
-
-Activar los motores individualmente.
-
-Por ejemplo:
-
-```text
-Prueba 1 → M1
-Prueba 2 → M2
-Prueba 3 → M3
-Prueba 4 → M4
-```
-
-Comprobar:
-
-* [ ] M1 funciona.
-* [ ] M2 funciona.
-* [ ] M3 funciona.
-* [ ] M4 funciona.
-* [ ] Ningún motor presenta ruido anormal.
-* [ ] Ningún motor se calienta excesivamente.
-* [ ] La controladora no se reinicia.
-* [ ] La alimentación permanece estable.
-
----
-
-# 12. Verificación del sentido de giro
-
-Sin hélices instaladas, comprobar visualmente el sentido de giro.
-
-```text
-             FRENTE
-                ↑
-
-          ↻             ↺
-         M1             M2
-
-          ↺             ↻
-         M3             M4
-```
-
-Si un motor gira en sentido contrario:
-
-* Corregir la configuración del firmware, si es posible.
-* Si el motor utiliza tres fases y el diseño lo permite, intercambiar dos de las fases/cables del motor.
-
-> No realizar modificaciones eléctricas mientras la batería esté conectada.
-
----
-
-# 13. Instalación definitiva de las hélices
-
-Una vez comprobado que:
-
-* Los cuatro motores funcionan.
-* La dirección de giro es correcta.
-* La controladora responde.
-* La alimentación es estable.
-
-Instalar las hélices.
-
-### Comprobación
-
-Cada hélice debe:
-
-* Corresponder al motor correcto.
-* Tener la orientación correcta.
-* Estar correctamente fijada.
-* No presentar grietas.
-* No tener deformaciones.
-
----
-
-# 14. Prueba del sistema de control
-
-Encender el sistema de control y verificar:
-
-```text
-Control
-   ↓
-Comunicación
-   ↓
-Controladora
-   ↓
-Firmware
-   ↓
-Motores
-```
-
-Comprobar:
-
-* [ ] Conexión estable.
-* [ ] Throttle responde correctamente.
-* [ ] Roll responde correctamente.
-* [ ] Pitch responde correctamente.
-* [ ] Yaw responde correctamente.
-* [ ] Los comandos corresponden al movimiento esperado.
-
----
-
-# 15. Primera prueba de vuelo
-
-Realizar la primera prueba en un área:
-
-* Abierta.
-* Sin personas cerca.
-* Sin objetos frágiles.
-* Sin cables u obstáculos.
-* Con suficiente espacio alrededor del dron.
-
-### Procedimiento
-
-1. Colocar el dron sobre una superficie nivelada.
-2. Encender la controladora.
-3. Esperar a que finalice la inicialización.
-4. Conectar el control.
-5. Comprobar nuevamente la comunicación.
-6. Armar el dron.
-7. Incrementar gradualmente el throttle.
-8. Realizar un despegue corto.
-9. Mantenerlo a baja altura.
-10. Comprobar estabilidad.
-11. Aterrizar inmediatamente si se detecta un comportamiento anormal.
-
----
-
-# 16. Condiciones para abortar la prueba
-
-Interrumpir inmediatamente la prueba si:
-
-* Un motor no responde.
-* Una hélice vibra excesivamente.
-* El dron intenta volcarse.
-* El dron gira sobre sí mismo sin comando.
-* La controladora se reinicia.
-* La batería presenta calentamiento anormal.
-* Aparece olor a componente quemado.
-* Se pierde la comunicación.
-* El dron responde de manera inesperada a los controles.
-
----
-
-# 17. Diagnóstico de problemas
-
-## El dron no enciende
-
-Comprobar:
-
-```text
-Batería
-   ↓
-Conector
-   ↓
-Protección/BMS
-   ↓
-Alimentación de la placa
-   ↓
-Reguladores
-```
-
----
-
-## Un motor no funciona
-
-Comprobar:
-
-1. Conector.
-2. Cableado.
-3. Salida de la controladora.
-4. Configuración del firmware.
-5. Motor.
-6. Alimentación.
-
-Una prueba útil es intercambiar temporalmente el motor por otro canal, **sin hélices**, para determinar si el problema está en el motor o en la salida de la controladora.
-
----
-
-## El motor gira en sentido incorrecto
-
-Revisar la configuración de dirección del motor en el firmware.
-
----
-
-## El dron intenta volcarse
-
-Posibles causas:
-
-* Hélices incorrectas.
-* Hélices instaladas al revés.
-* Motor conectado a una posición incorrecta.
-* Dirección de giro incorrecta.
-* Asignación de motores incorrecta.
-* IMU mal calibrada.
-* Orientación incorrecta de la controladora.
-* Configuración PID incorrecta.
-
----
-
-# 18. Checklist final
-
-## Hardware
-
-* [ ] Chasis inspeccionado.
-* [ ] 4 motores instalados.
-* [ ] Motores correctamente conectados.
-* [ ] Hélices correctas.
-* [ ] Hélices correctamente instaladas.
-* [ ] Batería compatible.
-* [ ] Conectores revisados.
-
-
-## Pruebas
-
-* [ ] Prueba sin hélices.
-* [ ] Los 4 motores funcionan.
-* [ ] Sentido de giro correcto.
-* [ ] Comunicación estable.
-* [ ] Controles funcionan.
-* [ ] Prueba de vuelo realizada.
-
----
-
-# 19. Estructura recomendada del proyecto
-
-```text
-DRONE/
-│
-├── README.md
-│
-├── firmware/
-│   ├── src/
-│   ├── include/
-│   ├── lib/
-│   └── platformio.ini
-│
-├── hardware/
-│   ├── esquemas/
-│   ├── conexiones/
-│   └── diagramas/
-│
-├── documentation/
-│   ├── pruebas.md
-│   ├── configuracion.md
-│   └── troubleshooting.md
-│
-└── images/
-    ├── drone.jpg
-    ├── motores.jpg
-    └── conexiones.jpg
-```
-
----
-
-# 20. Registro de pruebas
-
-| Prueba          | Resultado | Observaciones |
-| --------------- | --------- | ------------- |
-| Alimentación    | [ ]       |               |
-| Comunicación    | [ ]       |               |
-| Motor 1         | [ ]       |               |
-| Motor 2         | [ ]       |               |
-| Motor 3         | [ ]       |               |
-| Motor 4         | [ ]       |               |
-| Sentido de giro | [ ]       |               |
-| IMU             | [ ]       |               |
-| Control remoto  | [ ]       |               |
-| Despegue        | [ ]       |               |
-| Estabilidad     | [ ]       |               |
-
----
-
-## Resumen del procedimiento
-
-```text
-Dron preensamblado
-        │
-        ▼
-Inspección
-        │
-        ▼
-Instalar motores
-        │
-        ▼
-Conectar motores
-        │
-        ▼
-Programar controladora
-        │
-        ▼
-Prueba SIN hélices
-        │
-        ▼
-Verificar motores
-        │
-        ▼
-Verificar sentidos de giro
-        │
-        ▼
-Instalar hélices
-        │
-        ▼
-Configurar control
-        │
-        ▼
-Prueba de vuelo
-        │
-        ▼
-       Dron
-```
-
-# Seguridad
-
-Las hélices pueden provocar lesiones y los motores pueden arrancar inesperadamente. Durante la programación, configuración y diagnóstico, **retirar las hélices siempre que sea posible**.
-
-Las baterías LiPo deben manipularse con cuidado y utilizar un cargador compatible. No utilizar una batería únicamente porque físicamente encaje en el conector: verificar siempre su tensión, corriente y compatibilidad con la electrónica del dron.
+Desarrollado por Eduardo Gómez Mejía / Los Onexx para el Instituto Tecnológico Superior del Occidente del Estado de Hidalgo / TERA, 2026.
+Proyecto de código abierto para fines educativos y de investigación.

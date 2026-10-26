@@ -1,4 +1,4 @@
-// MAVLink通讯
+// Comunicación MAVLink
 // MAVLink communication
 
 #if WIFI_ENABLED
@@ -36,7 +36,7 @@ void sendMavlink() {
 			mode, MAV_STATE_STANDBY);
 		sendMessage(&msg);
 
-		if (!mavlinkConnected) return; // send only heartbeat until connected
+		if (!mavlinkConnected) return; // enviar solo latido hasta conectarse
 
 		mavlink_msg_extended_sys_state_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &msg,
 			MAV_VTOL_STATE_UNDEFINED, landed ? MAV_LANDED_STATE_ON_GROUND : MAV_LANDED_STATE_IN_AIR);
@@ -46,12 +46,12 @@ void sendMavlink() {
 	if (telemetryFast && mavlinkConnected) {
 		const float offset[] = {0, 0, 0, 0};
 		mavlink_msg_attitude_quaternion_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &msg,
-			time, attitude.w, attitude.x, -attitude.y, -attitude.z, rates.x, -rates.y, -rates.z, offset); // convert to frd
+			time, attitude.w, attitude.x, -attitude.y, -attitude.z, rates.x, -rates.y, -rates.z, offset); // convertir a frd
 		sendMessage(&msg);
 
 		mavlink_msg_rc_channels_raw_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &msg, controlTime * 1000, 0,
 			channels[0], channels[1], channels[2], channels[3], channels[4], channels[5], channels[6], channels[7], UINT8_MAX);
-		if (channels[0] != 0) sendMessage(&msg); // 0 means no RC input
+		if (channels[0] != 0) sendMessage(&msg); // 0 significa sin entrada RC
 
 		float controls[8];
 		memcpy(controls, motors, sizeof(motors));
@@ -59,7 +59,7 @@ void sendMavlink() {
 		sendMessage(&msg);
 
 		mavlink_msg_scaled_imu_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &msg, time,
-			acc.x / ONE_G * 1000, -acc.y / ONE_G * 1000, -acc.z / ONE_G * 1000, // convert to frd
+			acc.x / ONE_G * 1000, -acc.y / ONE_G * 1000, -acc.z / ONE_G * 1000, // convertir a frd
 			gyro.x * 1000, -gyro.y * 1000, -gyro.z * 1000,
 			0, 0, 0, 0);
 		sendMessage(&msg);
@@ -77,7 +77,7 @@ void receiveMavlink() {
 	int len = receiveWiFi(buf, MAVLINK_MAX_PACKET_LEN);
 	if (len) mavlinkConnected = true;
 
-	// New packet, parse it
+	// Nuevo paquete, analizarlo
 	mavlink_message_t msg;
 	mavlink_status_t status;
 	for (int i = 0; i < len; i++) {
@@ -93,7 +93,7 @@ void handleMavlink(const void *_msg) {
 	if (msg.msgid == MAVLINK_MSG_ID_MANUAL_CONTROL) {
 		mavlink_manual_control_t m;
 		mavlink_msg_manual_control_decode(&msg, &m);
-		if (m.target && m.target != mavlinkSysId) return; // 0 is broadcast
+		if (m.target && m.target != mavlinkSysId) return; // 0 es broadcast
 
 		controlThrottle = m.z / 1000.0f;
 		controlPitch = m.x / 1000.0f;
@@ -122,7 +122,7 @@ void handleMavlink(const void *_msg) {
 		if (m.target_system && m.target_system != mavlinkSysId) return;
 
 		char name[MAVLINK_MSG_PARAM_REQUEST_READ_FIELD_PARAM_ID_LEN + 1];
-		strlcpy(name, m.param_id, sizeof(name)); // param_id might be not null-terminated
+		strlcpy(name, m.param_id, sizeof(name)); // param_id puede no estar terminado en null
 		float value = strlen(name) == 0 ? getParameter(m.param_index) : getParameter(name);
 		if (m.param_index != -1) {
 			memcpy(name, getParameterName(m.param_index), 16);
@@ -139,17 +139,17 @@ void handleMavlink(const void *_msg) {
 		if (m.target_system && m.target_system != mavlinkSysId) return;
 
 		char name[MAVLINK_MSG_PARAM_SET_FIELD_PARAM_ID_LEN + 1];
-		strlcpy(name, m.param_id, sizeof(name)); // param_id might be not null-terminated
+		strlcpy(name, m.param_id, sizeof(name)); // param_id puede no estar terminado en null
 		bool success = setParameter(name, m.param_value);
 		if (!success) return;
-		// send ack
+		// enviar ack
 		mavlink_message_t msg;
 		mavlink_msg_param_value_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &msg,
-			m.param_id, getParameter(name), MAV_PARAM_TYPE_REAL32, parametersCount(), 0); // index is unknown
+			m.param_id, getParameter(name), MAV_PARAM_TYPE_REAL32, parametersCount(), 0); // índice desconocido
 		sendMessage(&msg);
 	}
 
-	if (msg.msgid == MAVLINK_MSG_ID_MISSION_REQUEST_LIST) { // handle to make qgc happy
+	if (msg.msgid == MAVLINK_MSG_ID_MISSION_REQUEST_LIST) { // manejar para contentar a qgc
 		mavlink_mission_request_list_t m;
 		mavlink_msg_mission_request_list_decode(&msg, &m);
 		if (m.target_system && m.target_system != mavlinkSysId) return;
@@ -165,7 +165,7 @@ void handleMavlink(const void *_msg) {
 		if (m.target_system && m.target_system != mavlinkSysId) return;
 
 		char data[MAVLINK_MSG_SERIAL_CONTROL_FIELD_DATA_LEN + 1];
-		strlcpy(data, (const char *)m.data, m.count); // data might be not null-terminated
+		strlcpy(data, (const char *)m.data, m.count); // data puede no estar terminado en null
 		doCommand(data, true);
 	}
 
@@ -176,9 +176,9 @@ void handleMavlink(const void *_msg) {
 		mavlink_msg_set_attitude_target_decode(&msg, &m);
 		if (m.target_system && m.target_system != mavlinkSysId) return;
 
-		// copy attitude, rates and thrust targets
+		// copiar actitud, velocidades angulares y empuje objetivo
 		ratesTarget.x = m.body_roll_rate;
-		ratesTarget.y = -m.body_pitch_rate; // convert to flu
+		ratesTarget.y = -m.body_pitch_rate; // convertir a flu
 		ratesTarget.z = -m.body_yaw_rate;
 		attitudeTarget.w = m.q[0];
 		attitudeTarget.x = m.q[1];
@@ -201,7 +201,7 @@ void handleMavlink(const void *_msg) {
 		attitudeTarget.invalidate();
 		ratesTarget.invalidate();
 		torqueTarget.invalidate();
-		memcpy(motors, m.controls, sizeof(motors)); // copy motor thrusts
+		memcpy(motors, m.controls, sizeof(motors)); // copiar empujes de motores
 		armed = motors[0] > 0 || motors[1] > 0 || motors[2] > 0 || motors[3] > 0;
 	}
 
@@ -210,7 +210,7 @@ void handleMavlink(const void *_msg) {
 		mavlink_msg_log_request_data_decode(&msg, &m);
 		if (m.target_system && m.target_system != mavlinkSysId) return;
 
-		// Send all log records
+		// Enviar todos los registros de log
 		for (int i = 0; i < sizeof(logBuffer) / sizeof(logBuffer[0]); i++) {
 			mavlink_message_t msg;
 			mavlink_msg_log_data_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &msg, 0, i,
@@ -219,7 +219,7 @@ void handleMavlink(const void *_msg) {
 		}
 	}
 
-	// Handle commands
+	// Manejar comandos
 	if (msg.msgid == MAVLINK_MSG_ID_COMMAND_LONG) {
 		mavlink_command_long_t m;
 		mavlink_msg_command_long_decode(&msg, &m);
@@ -235,31 +235,31 @@ void handleMavlink(const void *_msg) {
 		}
 
 		if (m.command == MAV_CMD_COMPONENT_ARM_DISARM) {
-			if (m.param1 && controlThrottle > 0.05) return; // don't arm if throttle is not low
+			if (m.param1 && controlThrottle > 0.05) return; // no armar si el gas no está bajo
 			accepted = true;
 			armed = m.param1 == 1;
 		}
 
 		if (m.command == MAV_CMD_DO_SET_MODE) {
-			if (m.param2 < 0 || m.param2 > AUTO) return; // incorrect mode
+			if (m.param2 < 0 || m.param2 > AUTO) return; // modo incorrecto
 			accepted = true;
 			mode = m.param2;
 		}
 
-		// send command ack
+		// enviar ack del comando
 		mavlink_message_t ack;
 		mavlink_msg_command_ack_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &ack, m.command, accepted ? MAV_RESULT_ACCEPTED : MAV_RESULT_UNSUPPORTED, UINT8_MAX, 0, msg.sysid, msg.compid);
 		sendMessage(&ack);
 	}
 }
 
-// Send shell output to GCS
+// Enviar salida de shell a la estación de control
 void mavlinkPrint(const char* str) {
 	mavlinkPrintBuffer += str;
 }
 
 void sendMavlinkPrint() {
-	// Send mavlink print data in chunks
+	// Enviar los datos de print por fragmentos
 	const char *str = mavlinkPrintBuffer.c_str();
 	for (int i = 0; i < strlen(str); i += MAVLINK_MSG_SERIAL_CONTROL_FIELD_DATA_LEN) {
 		char data[MAVLINK_MSG_SERIAL_CONTROL_FIELD_DATA_LEN + 1];
@@ -267,7 +267,7 @@ void sendMavlinkPrint() {
 		mavlink_message_t msg;
 		mavlink_msg_serial_control_pack(mavlinkSysId, MAV_COMP_ID_AUTOPILOT1, &msg,
 			SERIAL_CONTROL_DEV_SHELL,
-			i + MAVLINK_MSG_SERIAL_CONTROL_FIELD_DATA_LEN < strlen(str) ? SERIAL_CONTROL_FLAG_MULTI : 0, // more chunks to go
+			i + MAVLINK_MSG_SERIAL_CONTROL_FIELD_DATA_LEN < strlen(str) ? SERIAL_CONTROL_FLAG_MULTI : 0, // quedan más fragmentos
 			0, 0, strlen(data), (uint8_t *)data, 0, 0);
 		sendMessage(&msg);
 	}

@@ -1,4 +1,4 @@
-// Implementation of command line interface 
+// Implementación de la interfaz de línea de comandos
 
 #include "pid.h"
 #include "vector.h"
@@ -23,32 +23,32 @@ extern int mode;
 extern bool armed;
 
 const char* motd =
-"输入命令，然后回车:\n"
-"help - 帮助\n"
-"p - 显示所有参数\n"
-"p <name> - 显示指定参数\n"
-"p <name> <value> - 设置参数\n"
-"p MOT_PIN_FL 14 - 参数设置示例，前左电机引脚为14\n"
-"preset - 重置参数存储，设置参数后运行此命令\n"
-"mfr, mfl, mrr, mrl - 测试马达 (马达会全速运转，为了安全不要装桨叶！！！)\n"
-"ca - 校准陀螺仪加速度计\n"
-"ps - 显示pitch/roll/yaw姿态\n"
-"cr - 校准RC遥控器\n"
-"rc - 显示RC遥控数据\n"
-"wifi - 显示WiFi信息\n"
-"ap <ssid> <password> - 配置AP模式SSID和密码\n"
-"sta <ssid> <password> - 配置STA客户端模式\n"
-"raw/stab/acro/auto - 飞行模式设定\n"
-"arm - 解锁无人机\n"
-"disarm - 锁定无人机\n"
-"psq - 显示姿态四元数\n"
-"imu - 显示IMU数据\n"
-"time - 显示时间信息\n"
-"mot - 显示motor输出\n"
-"sys - 显示系统info信息\n"
-"log [dump] - 打印日志\n"
-"reboot - 重启无人机\n"
-"reset - 重置无人机\n";
+"Escriba un comando y pulse Enter:\n"
+"help - Ayuda\n"
+"p - Mostrar todos los parámetros\n"
+"p <nombre> - Mostrar un parámetro específico\n"
+"p <nombre> <valor> - Establecer un parámetro\n"
+"p MOT_PIN_FL 14 - Ejemplo, pin del motor delantero izquierdo a 14\n"
+"preset - Reiniciar el almacenamiento de parámetros, ejecutar tras ajustar\n"
+"mfr, mfl, mrr, mrl - Probar motores (¡los motores girarán a tope, por seguridad NO montar hélices!)\n"
+"ca - Calibrar giroscopio y acelerómetro\n"
+"ps - Mostrar actitud pitch/roll/yaw\n"
+"cr - Calibrar emisora RC\n"
+"rc - Mostrar datos del RC\n"
+"wifi - Mostrar información Wi-Fi\n"
+"ap <ssid> <contraseña> - Configurar SSID y contraseña en modo AP\n"
+"sta <ssid> <contraseña> - Configurar modo cliente STA\n"
+"raw/stab/acro/auto - Establecer modo de vuelo\n"
+"arm - Armar dron\n"
+"disarm - Desarmar dron\n"
+"psq - Mostrar cuaternión de actitud\n"
+"imu - Mostrar datos del IMU\n"
+"time - Mostrar información de tiempo\n"
+"mot - Mostrar salida de motores\n"
+"sys - Mostrar información del sistema\n"
+"log [dump] - Imprimir log\n"
+"reboot - Reiniciar el dron\n"
+"reset - Reiniciar el dron\n";
 
 void print(const char* format, ...) {
 	char buf[1000];
@@ -74,26 +74,26 @@ void pause(float duration) {
 		processMavlink();
 #endif
 #if WEB_RC_ENABLED
-		readWebRC(); // 保持 HTTP 服务器在长时间命令（ca/cr）期间持续响应
+		readWebRC(); // Mantener el servidor HTTP respondiendo durante comandos largos (ca/cr)
 #endif
 		delay(50);
 	}
 }
 
 void doCommand(String str, bool echo = false) {
-	// parse command
+	// analizar comando
 	String command, arg0, arg1;
 	splitString(str, command, arg0, arg1);
 	if (command.isEmpty()) return;
 
-	// echo command
+	// eco del comando
 	if (echo) {
 		print("> %s\n", str.c_str());
 	}
 
 	command.toLowerCase();
 
-	// execute command
+	// ejecutar comando
 	if (command == "help" || command == "motd") {
 		print("%s\n", motd);
 	} else if (command == "p" && arg0 == "") {
@@ -105,13 +105,13 @@ void doCommand(String str, bool echo = false) {
 		if (success) {
 			print("%s = %g\n", arg0.c_str(), getParameter(arg0.c_str()));
 		} else {
-			print("Parameter not found: %s\n", arg0.c_str());
+			print("Parámetro no encontrado: %s\n", arg0.c_str());
 		}
 	} else if (command == "preset") {
 		resetParameters();
 	} else if (command == "time") {
-		print("Time: %f\n", t);
-		print("Loop rate: %.0f\n", loopRate);
+		print("Tiempo: %f\n", t);
+		print("Frecuencia del bucle: %.0f\n", loopRate);
 		print("dt: %f\n", dt);
 	} else if (command == "ps") {
 		Vector a = attitude.toEuler();
@@ -121,7 +121,7 @@ void doCommand(String str, bool echo = false) {
 	} else if (command == "imu") {
 		printIMUInfo();
 		printIMUCalibration();
-		print("landed: %d\n", landed);
+		print("en tierra: %d\n", landed);
 	} else if (command == "arm") {
 		armed = true;
 	} else if (command == "disarm") {
@@ -135,15 +135,15 @@ void doCommand(String str, bool echo = false) {
 	} else if (command == "auto") {
 		mode = AUTO;
 	} else if (command == "rc") {
-		print("channels: ");
+		print("canales: ");
 		for (int i = 0; i < 16; i++) {
 			print("%u ", channels[i]);
 		}
-		print("\nroll: %g pitch: %g yaw: %g throttle: %g mode: %g\n",
+		print("\nroll: %g pitch: %g yaw: %g gas: %g modo: %g\n",
 			controlRoll, controlPitch, controlYaw, controlThrottle, controlMode);
-		print("time: %.1f\n", controlTime);
-		print("mode: %s\n", getModeName());
-		print("armed: %d\n", armed);
+		print("tiempo: %.1f\n", controlTime);
+		print("modo: %s\n", getModeName());
+		print("armado: %d\n", armed);
 	} else if (command == "wifi") {
 #if WIFI_ENABLED
 		printWiFiInfo();
@@ -157,7 +157,7 @@ void doCommand(String str, bool echo = false) {
 		configWiFi(false, arg0.c_str(), arg1.c_str());
 #endif
 	} else if (command == "mot") {
-		print("front-right %g front-left %g rear-right %g rear-left %g\n",
+		print("frontal-derecho %g frontal-izquierdo %g trasero-derecho %g trasero-izquierdo %g\n",
 			motors[MOTOR_FRONT_RIGHT], motors[MOTOR_FRONT_LEFT], motors[MOTOR_REAR_RIGHT], motors[MOTOR_REAR_LEFT]);
 	} else if (command == "log") {
 		printLogHeader();
@@ -177,10 +177,10 @@ void doCommand(String str, bool echo = false) {
 	} else if (command == "sys") {
 #ifdef ESP32
 		print("Chip: %s\n", ESP.getChipModel());
-		print("Temperature: %.1f °C\n", temperatureRead());
-		print("Free heap: %d\n", ESP.getFreeHeap());
-		// Print tasks table
-		print("Num  Task                Stack  Prio  Core  CPU%%\n");
+		print("Temperatura: %.1f °C\n", temperatureRead());
+		print("Heap libre: %d\n", ESP.getFreeHeap());
+		// Imprimir tabla de tareas
+		print("Num  Tarea               Pila   Prio  Núcleo CPU%%\n");
 		int taskCount = uxTaskGetNumberOfTasks();
 		TaskStatus_t *systemState = new TaskStatus_t[taskCount];
 		uint32_t totalRunTime;
@@ -199,7 +199,7 @@ void doCommand(String str, bool echo = false) {
 	} else if (command == "reboot") {
 		ESP.restart();
 	} else {
-		print("Invalid command: %s\n", command.c_str());
+		print("Comando inválido: %s\n", command.c_str());
 	}
 }
 
